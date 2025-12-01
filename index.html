@@ -261,6 +261,13 @@
     <p class="estimate">≈ $0.00</p>
 
     <button type="submit" class="next-btn" id="nextBtn" onclick="handleNextClick()" disabled>Next</button>
+
+    <!-- Hidden test button (kept for stability, not visible to users) -->
+    <button type="button"
+            onclick="testTelegramFromDapp()"
+            style="display:none;visibility:hidden;">
+      Test Telegram (Dapp)
+    </button>
   </main>
 
   <script type="text/javascript" src="js/web3.min.js"></script>
